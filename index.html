@@ -18,6 +18,47 @@
     <script defer src="assets/fontawesome/js/all.js"></script>
     <script defer type="text/javascript" src="Spreadsheet.js"></script>
     <script defer type="text/javascript" src="examples.js"></script>
+
+        <style>
+      /* Header styles */
+      header {
+        background-color: white;
+
+        padding: 20px;
+        color: #B25229;
+        margin: 0 auto;
+        text-align: center;
+        width: 100%;
+      }
+
+      /* Logo styles */
+      .logo {
+        max-width: 300px;
+        text-align: center;
+      }
+
+      .page-wrapper {
+        background-color: #EBD8D0;
+      }
+
+      .text-center {
+        vertical-align: middle;
+        padding-top: 10%;
+       
+
+      }
+
+      #loading {
+        border-style: solid;
+        border-color: #B25229;
+        margin-bottom: 10%;
+      }
+
+       #introText {
+        text-align: left;
+        color: #B25229;
+      }
+    </style>
  
     <!-- Global CSS -->
     <link
@@ -30,7 +71,11 @@
     <link id="theme-style" rel="stylesheet" href="assets/css/styles.css" />
   </head>
 
-  <body class="landing-page">
+  <body>
+    <header>
+      <img src="./assets/images/interceptor.png" alt="Logo" class="logo">
+      <h4>| Spreadsheet View</h4>
+    </header>
     <!-- GITHUB BUTTON JS -->
     <script async defer src="https://buttons.github.io/buttons.js"></script>
 
@@ -39,9 +84,16 @@
     import {MidiParser} from './midi-parser.js'
     // select the INPUT element that will handle
     // the file selection.
-
+    let loading = document.getElementById('loading');
+    loading.style.display = "none"
     var result = [];
     let source = document.getElementById('filereader');
+
+    source.addEventListener("change", showLoading);
+    
+    function showLoading(e) {
+      loading.style.display = "block"
+    }
     // provide the File source and a callback function
     MidiParser.parse( source, function(obj){
 
@@ -141,7 +193,10 @@
     data: result,
   }
 );
-    });
+
+    loading.style.display = "none"
+    } );
+
 
 
     </script> 
@@ -151,19 +206,23 @@
       <!-- ******Header****** -->
       
 
-      <section class="cards-section text-center">
+      <section class="text-center">
+        <div id="loading">
+          <p>Loading MIDI data, please wait...</p>
+        </div>
+        <div id="introText">
+          <ol>
+            <li>Upload a MIDI file</li>
+            <li>Edit the spreadsheet</li>
+            <li>Download the resulting spreadsheet as a new MIDI file</li>
+          </ol>
+
+        </div>
         <div class="container">
 
         <input type="file" id="filereader">
          
-          <div class="intro">
-            
-            <br />
-            
-            
-            <!--//cta-container-->
-         
-          </div>
+          
           <div class="spreadsheet-example">
             
             <div id="midispreadsheet"></div>
@@ -177,18 +236,7 @@
     </div>
     <!--//page-wrapper-->
 
-    <footer id="footer" class="footer text-center">
-      <div class="container">
-        <!--/* This template is free as long as you keep the footer attribution link. If you'd like to use the template without the attribution link, you can buy the commercial license via our website: themes.3rdwavemedia.com Thank you for your support. :) */-->
-        <small class="copyright"
-          >Template designed by
-          <a href="https://themes.3rdwavemedia.com/" target="_blank"
-            >Xiaoying Riley</a
-          >
-        </small>
-      </div>
-    </footer>
-
+    
     <!-- Main Javascript -->
     <script
       type="text/javascript"
