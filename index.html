@@ -178,19 +178,50 @@
 
       console.log(result);
 
+      var result2 = [];
+
+
+
+      for(var row in result){
+
+
+
+        if(result[row][1]=="NOTE_ON"){
+          result2.push([result[row][0],result[row][2],result[row][3]]);
+          
+          for (var secRow = parseInt(row) + 1; secRow < result.length; secRow++) {
+            // console.log(result[1]);
+            if (result[secRow][1]=="NOTE_OFF" && result[secRow][2]==result[row][2]){
+              result2[result2.length - 1].push(result[secRow][0]);
+            }
+            
+          }
+        
+        }
+
+      }
+
+
       const sp = Spreadsheet('#midispreadsheet');
       sp.createSpreadsheet(
   {
-    bar: 'text',
-    message_type: 'text',
-    'pitch': 'number',
+    // bar: 'text',
+    // message_type: 'text',
+    // 'pitch': 'number',
+    // 'velocity': 'number',
+    // 'recorded_tempo': 'number',
+    // Start_Ctrl: 'text',
+    // End_Ctrl: 'text',
+   
+    barInit: 'text',
+    pitch: 'text',
     'velocity': 'number',
-    'recorded_tempo': 'number',
-    Start_Ctrl: 'text',
-    End_Ctrl: 'text',
+    barEnd: 'text',
+
+
   },
   {
-    data: result,
+    data: result2,
   }
 );
 
