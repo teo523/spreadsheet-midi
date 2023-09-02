@@ -137,8 +137,9 @@
 
       let ticks_per_quarter = 480;
       let currentTicks = 0;
+      let currentTime = 1;
       let currentBar = 1 ;
-      let currentBPM = 120;
+      let currentBPM = 144;
       let currentDenom = 4;
       let currentNum = 4;
       let delta;
@@ -158,19 +159,31 @@
           currentDenom = changeSig[k][1][0];
           k = k + 1;
         }
+       
 
-          let barDelta = Math.round(elemTrack[i].deltaTime / (ticks_per_quarter * currentDenom))
+          let timeDelta = elemTrack[i].deltaTime / (ticks_per_quarter * currentDenom);
 
-          currentBar = currentBar + barDelta;
+          currentTime = currentTime + timeDelta;
 
-          currentTicks = currentTicks + elemTrack[i].deltaTime;
+          currentBar = Math.floor(currentTime);
+
+
+          let cQ = currentTime - currentBar;
+
+          let currentQuarter = Math.floor((cQ * currentNum) + 1);
+
+          let cT =  (cQ - (currentQuarter - 1) * 0.25) / 0.25;
+
+          let currentTick = Math.floor((cT * ticks_per_quarter));
+
+     
           
           if (elemTrack[i].type == 8) {
-          result.push([currentBar,"NOTE_OFF", elemTrack[i].data[0],elemTrack[i].data[1],1,"",""]);
+          result.push([currentTicks, currentBar + "." + currentQuarter + "." + currentTick ,"NOTE_OFF", elemTrack[i].data[0],elemTrack[i].data[1],1,"",""]);
           }
 
           if (elemTrack[i].type == 9) {
-          result.push([currentBar,"NOTE_ON", elemTrack[i].data[0],elemTrack[i].data[1],1,"",""]);
+          result.push([currentTicks, currentBar + "." + currentQuarter + "." + currentTick ,"NOTE_ON", elemTrack[i].data[0],elemTrack[i].data[1],1,"",""]);
           }
 
        
@@ -186,13 +199,13 @@
 
 
 
-        if(result[row][1]=="NOTE_ON"){
-          result2.push([result[row][0],result[row][2],result[row][3]]);
+        if(result[row][2]=="NOTE_ON"){
+          result2.push([result[row][0],result[row][1],result[row][3],result[row][4]]);
           
           for (var secRow = parseInt(row) + 1; secRow < result.length; secRow++) {
             // console.log(result[1]);
-            if (result[secRow][1]=="NOTE_OFF" && result[secRow][2]==result[row][2]){
-              result2[result2.length - 1].push(result[secRow][0]);
+            if (result[secRow][2]=="NOTE_OFF" && result[secRow][3]==result[row][3]){
+              result2[result2.length - 1].push(result[secRow][1]);
             }
             
           }
@@ -212,7 +225,8 @@
     // 'recorded_tempo': 'number',
     // Start_Ctrl: 'text',
     // End_Ctrl: 'text',
-   
+    
+    tickInit: 'text',
     barInit: 'text',
     pitch: 'text',
     'velocity': 'number',
