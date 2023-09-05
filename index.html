@@ -58,6 +58,13 @@
         text-align: left;
         color: #B25229;
       }
+
+      .column {
+        float: left;
+        width: 40%;
+        padding: 10px;
+        margin: 0 3% 0 3%;
+      }
     </style>
  
     <!-- Global CSS -->
@@ -87,13 +94,17 @@
     let loading = document.getElementById('loading');
     loading.style.display = "none"
     var result = [];
+    var result2 = [];
     let source = document.getElementById('filereader');
+    let source2 = document.getElementById('filereader2');
 
     source.addEventListener("change", showLoading);
     
     function showLoading(e) {
       loading.style.display = "block"
     }
+
+
     // provide the File source and a callback function
     MidiParser.parse( source, function(obj){
 
@@ -105,7 +116,8 @@
       let metaTrack;
       
 
-
+      //If there is metatrack, we assume track in index 1 will contain the midi notes. 
+      // This code doesn't work for multitrack midi files.
       if (obj.tracks > 1) {
       metaTrack = obj.track[0].event;
       elemTrack = obj.track[1].event;
@@ -134,6 +146,8 @@
       elemTrack = obj.track[0].event;}
       
       console.log(changeSig);
+      console.log(elemTrack);
+
 
       let ticks_per_quarter = 480;
       let currentTicks = 0;
@@ -141,38 +155,69 @@
       let currentBar = 1 ;
       let currentBPM = 144;
       let currentDenom = 4;
-      let currentNum = 4;
+      let currentNum = 2;
       let delta;
       let delta_msec;
-      let j = 0;
       let k = 0;
 
 
       for(var i in elemTrack) {
-        if (currentTicks + elemTrack[i] > changeBPM[j][0] & j < changeBPM.length) {
-          currentBPM = (1000000 / changeBPM[j][1]) * 60;
-          j = j + 1;
+
+        /*if (j < changeBPM.length) {
+          if (currentTicks + elemTrack[i].deltaTime >= changeBPM[j][0]){
+            currentBPM = (1000000 / changeBPM[j][1]) * 60;
+            console.log("changed BPM");
+            j = j + 1;
+          }
 
         }
 
-        else if (currentTicks + elemTrack[i] > changeSig[k][0] & k < changeSig.length) {
-          currentDenom = changeSig[k][1][0];
-          k = k + 1;
-        }
+        if (k < changeSig.length) {
+          if (currentTicks + elemTrack[i].deltaTime >= changeSig[k][0] ) {
+            currentNum = changeSig[k][1][0];
+            console.log(currentTicks + ": changed signature to " + currentNum);
+            k = k + 1;
+          }
+        }*/
+
+
+
        
+          currentTicks = currentTicks + elemTrack[i].deltaTime;
 
-          let timeDelta = elemTrack[i].deltaTime / (ticks_per_quarter * currentDenom);
+          
+          var bar = 1;
 
-          currentTime = currentTime + timeDelta;
+          for(var j=0; j<changeSig.length;j++){
+            //if the current tick is beyond the next change of signature, we calculate the bars directly by division
+            if(j < changeSig.length - 1){
+              if(changeSig[j+1][0]<currentTicks){
+                bar = bar + (changeSig[j+1][0] - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0]);
+              }
+              else {
+                bar = bar + (currentTicks - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0]);
+                currentNum = changeSig[j][1][0];
+                break;
+              }
+            }
 
-          currentBar = Math.floor(currentTime);
+            else {
+              bar = bar + (currentTicks - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0]);
+              currentNum = changeSig[j][1][0];
+              break;
+            }
+            
+
+          }
 
 
-          let cQ = currentTime - currentBar;
+          currentBar = Math.floor(bar);
+
+          let cQ = bar - currentBar;
 
           let currentQuarter = Math.floor((cQ * currentNum) + 1);
 
-          let cT =  (cQ - (currentQuarter - 1) * 0.25) / 0.25;
+          let cT =  (cQ - (currentQuarter - 1) / currentNum) / (1/currentNum);
 
           let currentTick = Math.floor((cT * ticks_per_quarter));
 
@@ -191,7 +236,7 @@
 
       console.log(result);
 
-      var result2 = [];
+      
 
 
 
@@ -215,6 +260,75 @@
       }
 
 
+ 
+
+    loading.style.display = "none"
+    } );
+
+     MidiParser.parse( source2, function(obj){
+      let changeBPM = [];
+      let elemTrack;
+      let metaTrack;
+
+     
+      if (obj.tracks > 1) {
+        metaTrack = obj.track[0].event;
+        elemTrack = obj.track[1].event;
+
+
+       
+        let metaTicks = 0;
+
+        for (var l in metaTrack){
+
+        metaTicks = metaTicks + metaTrack[l].deltaTime;
+          if (metaTrack[l].metaType == 81){
+             console.log("addedmeta");
+            changeBPM.push([metaTicks,metaTrack[l].data]);
+          }
+
+
+        }
+        var row = 0;
+
+
+        
+        for (let j=0;j<changeBPM.length;j++){
+          /*console.log("j= " + j);
+          console.log("changeBPM= " + changeBPM);
+          console.log("changeBPM.length= " + changeBPM.length);
+          console.log("changeBPM[j+1]= " + changeBPM[parseInt(j)+1]);*/
+          
+
+          if (j < changeBPM.length - 1 && row < result2.length){
+            while(result2[row][0]<changeBPM[j+1][0] ){
+              result2[row].push((1000000 / changeBPM[j][1]) * 60);
+              row = row + 1;
+              if (row == result2.length) {
+                break;
+              }
+              // console.log("changeBPM[j+1][0]= " + changeBPM[j+1][0]);
+              // console.log("result2[row][0]= " + result2[row][0]);
+            }
+          }
+          else {
+            while(row < result2.length){
+              result2[row].push((1000000 / changeBPM[j][1]) * 60);
+              row = row + 1;
+            }
+          }
+        }
+
+        }
+
+      else {
+        console.log("ERROR: midi file contains no track for tempo.");
+      }
+
+
+
+
+
       const sp = Spreadsheet('#midispreadsheet');
       sp.createSpreadsheet(
   {
@@ -231,6 +345,7 @@
     pitch: 'text',
     'velocity': 'number',
     barEnd: 'text',
+    recTempo: 'text',
 
 
   },
@@ -238,11 +353,7 @@
     data: result2,
   }
 );
-
-    loading.style.display = "none"
-    } );
-
-
+     } );
 
     </script> 
 
@@ -264,8 +375,19 @@
 
         </div>
         <div class="container">
+          <div class="row">
+            <div class="column" style="border-color: #B25229; border-style: solid;">
+              
+              <h4> Notes </h4>
+              
+             <input type="file" id="filereader">
+            </div>
 
-        <input type="file" id="filereader">
+            <div class="column" style="border-color: #B25229; border-style: solid; ">
+              <h4> Recorded Time </h4>
+              <input type="file" id="filereader2">
+            </div>
+          </div>
          
           
           <div class="spreadsheet-example">
