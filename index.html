@@ -234,12 +234,12 @@
        
       }
 
-      console.log(result);
+      
 
       
 
 
-
+      console.log(result);
       for(var row in result){
 
 
@@ -251,6 +251,7 @@
             // console.log(result[1]);
             if (result[secRow][2]=="NOTE_OFF" && result[secRow][3]==result[row][3]){
               result2[result2.length - 1].push(result[secRow][1]);
+              break;
             }
             
           }
@@ -302,7 +303,7 @@
 
           if (j < changeBPM.length - 1 && row < result2.length){
             while(result2[row][0]<changeBPM[j+1][0] ){
-              result2[row].push((1000000 / changeBPM[j][1]) * 60);
+              result2[row].push(Math.round((1000000 / changeBPM[j][1]) * 60));
               row = row + 1;
               if (row == result2.length) {
                 break;
@@ -313,7 +314,8 @@
           }
           else {
             while(row < result2.length){
-              result2[row].push((1000000 / changeBPM[j][1]) * 60);
+              result2[row].push(Math.round((1000000 / changeBPM[j][1]) * 60));
+              
               row = row + 1;
             }
           }
@@ -327,7 +329,7 @@
 
 
 
-
+      console.log(result2);
 
       const sp = Spreadsheet('#midispreadsheet');
       sp.createSpreadsheet(
