@@ -75,6 +75,11 @@
         'Clear sheet'
       );
 
+      const downloadButton = createButton(
+        () => downloadMidi(),
+        'Download Midi File'
+      );
+
       buttonContainer.append(addRowButton, deleteBottomRowButton, clearButton);
 
       if (options.submitCallback) {

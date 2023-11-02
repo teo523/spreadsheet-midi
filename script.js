@@ -12,6 +12,7 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
     let changeSig = [];
     let elemTrack;
     let metaTrack;
+    let metaTrackOrig;
     var tracks = [];
     var timeDiv = 960;
 
@@ -31,15 +32,16 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
     }
 
 
-    // provide the File source and a callback function
+    // MIDI Output File (Original Tempo)
     MidiParser.parse( source, function(obj){
 
-      console.log(obj);
+      //console.log(obj);
 
       //If there is metatrack, we assume track in index 1 will contain the midi notes. 
       // This code doesn't work for multitrack midi files.
       if (obj.tracks > 1) {
         metaTrack = obj.track[0].event;
+        metaTrackOrig = obj.track[0].event;
         elemTrack = obj.track[1].event;
 
       
@@ -59,6 +61,7 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
             var deltaTicks = metaTrack[l].deltaTime;
             var newEvent = new MidiWriter.TempoEvent({bpm: bpm.toString(), delta: deltaTicks.toString()});
             tracks[0].addEvent(newEvent);
+            
           }
           
           //Signature Changes
@@ -83,16 +86,12 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
           }
 
         }
-      console.log("metaTrack: " );
-      console.log(metaTrack);
-
+   
       }
 
       else {
       elemTrack = obj.track[0].event;}
       
-      //console.log(changeSig);
-      //console.log(elemTrack);
     
 
       let ticks_per_quarter = obj.timeDivision;
@@ -130,7 +129,7 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
 
        
           currentTicks = currentTicks + elemTrack[i].deltaTime;
-
+         
           
           var bar = 1;
 
@@ -138,17 +137,17 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
             //if the current tick is beyond the next change of signature, we calculate the bars directly by division
             if(j < changeSig.length - 1){
               if(changeSig[j+1][0]<currentTicks){
-                bar = bar + (changeSig[j+1][0] - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0]);
+                bar = bar + (changeSig[j+1][0] - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0] / Math.pow(2,changeSig[j][1][1] - 2));
               }
               else {
-                bar = bar + (currentTicks - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0]);
+                bar = bar + (currentTicks - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0] / Math.pow(2,changeSig[j][1][1] - 2));
                 currentNum = changeSig[j][1][0];
                 break;
               }
             }
 
             else {
-              bar = bar + (currentTicks - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0]);
+              bar = bar + (currentTicks - changeSig[j][0])/(ticks_per_quarter * changeSig[j][1][0] / Math.pow(2,changeSig[j][1][1] - 2));
               currentNum = changeSig[j][1][0];
               break;
             }
@@ -156,6 +155,10 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
 
           }
 
+          console.log("currentTicks")
+          console.log(currentTicks)
+          console.log("bar")
+          console.log(bar)
 
           currentBar = Math.floor(bar);
 
@@ -167,7 +170,12 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
 
           let currentTick = Math.floor((cT * ticks_per_quarter));
 
-     
+          if (Math.abs(timeDiv - currentTick) < 3 ){
+            
+            currentQuarter++;
+            currentTick = 0;
+
+          }
           
           if (elemTrack[i].type == 8) {
           result.push([currentTicks, currentBar + "." + currentQuarter + "." + currentTick ,"NOTE_OFF", elemTrack[i].data[0],elemTrack[i].data[1],1,"",""]);
@@ -180,7 +188,6 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
        
       }
 
-      console.log(result);
 
       
 
@@ -211,219 +218,230 @@ import MidiWriter from "https://cdn.skypack.dev/midi-writer-js@2.1.4";
     loading.style.display = "none"
     } );
 
-    //Handling Recorded times midi file
-     MidiParser.parse( source2, function(obj){
+
+//Handling Recorded times midi file
+MidiParser.parse( source2, function(obj){
       
-    timeDiv = obj.timeDivision;
-    metaTrack = [];
-    changeBPM = [];
+  timeDiv = obj.timeDivision;
+  metaTrack = [];
+  changeBPM = [];
+  var changeBPMOrig = [];
 
-     
-      if (obj.tracks > 1) {
-        metaTrack = obj.track[0].event;
-        elemTrack = obj.track[1].event;
+  if (obj.tracks > 1) {
+    metaTrack = obj.track[0].event;
+    elemTrack = obj.track[1].event;
 
 
-       
-        let metaTicks = 0;
+    
+    let metaTicks = 0;
 
-        for (var l in metaTrack){
+    for (var l in metaTrack){
 
-        metaTicks = metaTicks + metaTrack[l].deltaTime;
-          if (metaTrack[l].metaType == 81){
-             console.log("addedmeta");
-            changeBPM.push([metaTicks,metaTrack[l].data]);
+    metaTicks = metaTicks + metaTrack[l].deltaTime;
+      if (metaTrack[l].metaType == 81){
+        changeBPM.push([metaTicks,metaTrack[l].data]);
+        changeBPMOrig.push([metaTicks,metaTrackOrig[l].data]);
+
+      }
+
+
+    }
+    var row = 0;
+
+
+    
+    for (let j=0;j<changeBPM.length;j++){
+      /*console.log("j= " + j);
+      console.log("changeBPM= " + changeBPM);
+      console.log("changeBPM.length= " + changeBPM.length);
+      console.log("changeBPM[j+1]= " + changeBPM[parseInt(j)+1]);*/
+      
+
+      if (j < changeBPM.length - 1 && row < result2.length){
+        while(result2[row][0]<changeBPM[j+1][0] ){
+          result2[row].push(Math.round(((1000000 / changeBPM[j][1]) * 60)*100) / 100);
+          result2[row].push(Math.round(((1000000 / changeBPMOrig[j][1]) * 60)*100) / 100);
+          row = row + 1;
+          if (row == result2.length) {
+            break;
           }
-
-
+          // console.log("changeBPM[j+1][0]= " + changeBPM[j+1][0]);
+          // console.log("result2[row][0]= " + result2[row][0]);
         }
-        var row = 0;
-
-
-        
-        for (let j=0;j<changeBPM.length;j++){
-          /*console.log("j= " + j);
-          console.log("changeBPM= " + changeBPM);
-          console.log("changeBPM.length= " + changeBPM.length);
-          console.log("changeBPM[j+1]= " + changeBPM[parseInt(j)+1]);*/
-          
-
-          if (j < changeBPM.length - 1 && row < result2.length){
-            while(result2[row][0]<changeBPM[j+1][0] ){
-              result2[row].push((1000000 / changeBPM[j][1]) * 60);
-              row = row + 1;
-              if (row == result2.length) {
-                break;
-              }
-              // console.log("changeBPM[j+1][0]= " + changeBPM[j+1][0]);
-              // console.log("result2[row][0]= " + result2[row][0]);
-            }
-          }
-          else {
-            while(row < result2.length){
-              result2[row].push((1000000 / changeBPM[j][1]) * 60);
-              row = row + 1;
-            }
-          }
-        }
-
-        }
-
+      }
       else {
-        console.log("ERROR: midi file contains no track for tempo.");
+        while(row < result2.length){
+          result2[row].push(Math.round(((1000000 / changeBPM[j][1]) * 60)*100) / 100);
+          result2[row].push(Math.round(((1000000 / changeBPMOrig[j][1]) * 60)*100) / 100);
+          row = row + 1;
+        }
       }
+    }
+
+    }
+
+  else {
+    console.log("ERROR: midi file contains no track for tempo.");
+  }
 
 
-
-
-
-      const sp = Spreadsheet('#midispreadsheet');
-      sp.createSpreadsheet(
-        {
-            // bar: 'text',
-            // message_type: 'text',
-            // 'pitch': 'number',
-            // 'velocity': 'number',
-            // 'recorded_tempo': 'number',
-            // Start_Ctrl: 'text',
-            // End_Ctrl: 'text',
-            
-            tickInit: 'text',
-            barInit: 'text',
-            pitch: 'text',
-            'velocity': 'number',
-            barEnd: 'text',
-            recTempo: 'text',
-
-
-          },
-          {
-            data: result2,
-          }
-        );
-
-       
-       
+  var result3 = [];
   
-     
-     
-     
-     
-        var notes;
-        var tracks = [];
-
-tracks[0] = new MidiWriter.Track();
-tracks[1] = new MidiWriter.Track();
-
-
-var pitch;
-var vel ;
-var diff;
-var duration ;
-var tDuration;
-var wait;
-var tWait;
-
-var factor = 128/timeDiv;
-var curTempo = 120;
-
-
-
-//Meta-events first:
-
-//Look for first tempo value for using as default
-for (var j = 0; j  < metaTrack.length; j++){
-  if (metaTrack[j].metaType == 81){
-    curTempo = 60000000 / metaTrack[j].data;
-    break;
-  }
-}
-
-var deltaMeta = 0;
-
-for (var j = 0; j  < metaTrack.length; j++){
-  deltaMeta = deltaMeta + metaTrack[j].deltaTime;
-
-  //Tempo messages
-  if (metaTrack[j].metaType == 81){
-    var tempo = new MidiWriter.TempoEvent({bpm: 60000000 / metaTrack[j].data, delta: deltaMeta * factor});
-    tracks[0].addEvent(tempo);
-    curTempo = 60000000 / metaTrack[j].data;
-    deltaMeta = 0;
-  }
-
-  //TODO: Time Signature messages:
-  if (metaTrack[j].metaType == 88){
-    var tempo = new MidiWriter.TempoEvent({bpm: curTempo, delta: deltaMeta * factor});
-    tracks[0].addEvent(tempo);
-    deltaMeta = 0;
-    tracks[0].setTimeSignature(metaTrack[j].data[0], 2 * metaTrack[j].data[1]);
-
+  for (var row in result2){
+    result3[row]=[result2[row][1],result2[row][2],result2[row][3],result2[row][4],result2[row][5],result2[row][6]]
   }
 
 
-}
+  const sp = Spreadsheet('#midispreadsheet');
+  sp.createSpreadsheet(
+    {
+    // bar: 'text',
+    // message_type: 'text',
+    // 'pitch': 'number',
+    // 'velocity': 'number',
+    // 'recorded_tempo': 'number',
+    // Start_Ctrl: 'text',
+    // End_Ctrl: 'text',
+    
+    Sample_Start: 'text',
+    MIDI_Note_Number: 'text',
+    'Velocity': 'number',
+    Sample_End: 'text',
+    Rec_Tempo: 'text',
+    Orig_Tempo: 'text',
+    Filename: 'text',
+    },
+    {
+      data: result3,
+    }
+    );
+
+    
+    
+
+  
+  
+  
+  
+  var notes;
+  var tracks = [];
+
+  tracks[0] = new MidiWriter.Track();
+  tracks[1] = new MidiWriter.Track();
+
+
+  var pitch;
+  var vel ;
+  var diff;
+  var duration ;
+  var tDuration;
+  var wait;
+  var tWait;
+
+  var factor = 128/timeDiv;
+  var curTempo = 120;
 
 
 
-// We leave the last element to be handled by separate at the end
-for (var j = 0; j  < result2.length - 1; j++){
+  //Meta-events first:
 
-  duration = (result2[j + 1][0] - result2[j][0]) * factor;
-  tDuration = "t" + duration;
- 
-  //IMPORTANT: hee we are assuming no chords, i.e. only monophonic midi files. This can translate in the following condition:
-  if (duration > 0){
+  //Look for first tempo value for using as default
+  for (var j = 0; j  < metaTrack.length; j++){
+    if (metaTrack[j].metaType == 81){
+      curTempo = 60000000 / metaTrack[j].data;
+      break;
+    }
+  }
 
-    //First handle first note
-    if (j == 0){
+  var deltaMeta = 0;
 
-      //If first note doesnt play straight away add wait
-      if (result2[j][0]>0){
-        wait = result2[j][0] * factor;
-        tWait = "t" + wait;
-        tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[j][2], duration: tDuration, wait: tWait, velocity: result2[j][3]}));
+  for (var j = 0; j  < metaTrack.length; j++){
+    deltaMeta = deltaMeta + metaTrack[j].deltaTime;
+
+    //Tempo messages
+    if (metaTrack[j].metaType == 81){
+      var tempo = new MidiWriter.TempoEvent({bpm: 60000000 / metaTrack[j].data, delta: deltaMeta * factor});
+      tracks[0].addEvent(tempo);
+      curTempo = 60000000 / metaTrack[j].data;
+      deltaMeta = 0;
+    }
+
+    //TODO: Time Signature messages:
+    if (metaTrack[j].metaType == 88){
+      var tempo = new MidiWriter.TempoEvent({bpm: curTempo, delta: deltaMeta * factor});
+      tracks[0].addEvent(tempo);
+      deltaMeta = 0;
+      tracks[0].setTimeSignature(metaTrack[j].data[0], 2 * metaTrack[j].data[1]);
+
+    }
+
+
+  }
+
+
+
+  // We leave the last element to be handled by separate at the end
+  for (var j = 0; j  < result2.length - 1; j++){
+
+    duration = (result2[j + 1][0] - result2[j][0]) * factor;
+    tDuration = "t" + duration;
+  
+    //IMPORTANT: hee we are assuming no chords, i.e. only monophonic midi files. This can translate in the following condition:
+    if (duration > 0){
+
+      //First handle first note
+      if (j == 0){
+
+        //If first note doesnt play straight away add wait
+        if (result2[j][0]>0){
+          wait = result2[j][0] * factor;
+          tWait = "t" + wait;
+          tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[j][2], duration: tDuration, wait: tWait, velocity: result2[j][3]}));
+        }
+        else {
+          tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[j][2], duration: tDuration, velocity: result2[j][3]}));
+        } 
       }
+
+
+      //Handle single notes (no chords)
       else {
         tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[j][2], duration: tDuration, velocity: result2[j][3]}));
-      } 
+      }
+      
+
+      
+
     }
 
-
-    //Handle single notes (no chords)
-    else {
-      tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[j][2], duration: tDuration, velocity: result2[j][3]}));
-    }
     
+  } 
 
-    
+  window.metaTrack = metaTrack;
 
-  }
+  //We write the last note with an arbitrary duration of 20 ticks
+  tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[result2.length - 1][2], duration: 't20', velocity: result2[result2.length - 1][3]}));
 
-  
-} 
+  var write = new MidiWriter.Writer(tracks);
 
-window.metaTrack = metaTrack;
+  console.log(write.dataUri());
 
-//We write the last note with an arbitrary duration of 20 ticks
-tracks[1].addEvent(new MidiWriter.NoteEvent({pitch: result2[result2.length - 1][2], duration: 't20', velocity: result2[result2.length - 1][3]}));
 
-var write = new MidiWriter.Writer(tracks);
 
-console.log(write.dataUri());
-
-const downloadURI = (uri, name) => {
   const link = document.createElement("a");
-  link.download = name;
-  link.href = uri;
-  document.body.appendChild(link);
-  link.click();
-  document.body.appendChild(link);
-  
-}
-downloadURI(write.dataUri(), 'output.midi')
-     
-} );
+  link.download = 'output.midi';
+  link.href = write.dataUri();
+  const button = document.createElement("button");
+  button.append(link);
+  button.innerHTML = "Download MIDI"
+  button.style.height = "50px";
+  button.style.width = "200px";
+  button.onclick = function(){link.click()};
+  button.style.left = "40%";
+  button.style.position = "absolute";
+  document.body.append(button);
+
+  } );
 
    
      
